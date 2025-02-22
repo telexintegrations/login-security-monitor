@@ -1,0 +1,104 @@
+{
+  "data": {
+    "date": {
+      "created_at": "2025-02-21",
+      "updated_at": "2025-02-21"
+    },
+    "descriptions": {
+      "app_description": "Monitors authentication events and security incidents with real-time alerts",
+      "app_logo": "https://res.cloudinary.com/dmmz1qe2d/image/upload/v1739811402/svgexport-49_nwdjch.svg",
+      "app_name": "Auth Monitor & Security Alerts",
+      "app_url": "https://t2bhhd4t-3000.uks1.devtunnels.ms",
+      "background_color": "#111313"
+    },
+    "integration_category": "Security & Compliance",
+    "integration_type": "output",
+    "is_active": true,
+    "output": [
+      {
+        "label": "security_alerts",
+        "value": true
+      }
+    ],
+    "key_features": [
+      "Real-time authentication log monitoring",
+      "Database query pattern analysis",
+      "Anomaly detection in login behaviors",
+      "Failed login attempt tracking",
+      "Security incident alerting"
+    ],
+    "permissions": {
+      "monitoring_user": {
+        "always_online": true,
+        "display_name": "Security Monitor"
+      }
+    },
+    "settings": [
+      {
+        "label": "db_connection_string",
+        "type": "text",
+        "description": "Database connection string for JobJott auth logs",
+        "default": "",
+        "required": true
+      },
+      {
+        "label": "auth_key",
+        "type": "text",
+        "description": "Authentication key for secure communication",
+        "default": "YOUR_AUTH_KEY",
+        "required": true
+      },
+      {
+        "label": "alert_threshold",
+        "type": "number",
+        "description": "Number of failed login attempts before alerting",
+        "default": 5,
+        "required": true
+      },
+      {
+        "label": "time_window",
+        "type": "number",
+        "description": "Time window in minutes to analyze login patterns",
+        "default": 15,
+        "required": true
+      },
+      {
+        "label": "alert_severity",
+        "type": "dropdown",
+        "options": ["Critical", "High", "Medium", "Low"],
+        "description": "Security alert severity level",
+        "default": "High",
+        "required": true
+      },
+      {
+        "label": "alert_admins",
+        "type": "multi-checkbox",
+        "default": "DevOps-Lead",
+        "options": ["DevOps-Lead", "Security-Admin", "System-Admin"],
+        "required": true
+      },
+      {
+        "label": "monitored_events",
+        "type": "multi-select",
+        "description": "Authentication events to monitor",
+        "required": true,
+        "default": "sql_injection_attempt,privilege_escalation,failed_login,unusual_pattern,password_change,account_lockout,session_hijacking,brute_force,suspicious_ip",
+        "options": [
+          "failed_login",
+          "unusual_pattern",
+          "password_change",
+          "privilege_escalation",
+          "account_lockout",
+          "sql_injection_attempt",
+          "session_hijacking",
+          "brute_force",
+          "suspicious_ip"
+        ]
+      }
+    ],
+    "tick_url": "",
+    "target_url": "https://t2bhhd4t-3000.uks1.devtunnels.ms/test-webhook",
+    "author": "Daggahhh",
+    "version": "1.0.0"
+  }
+}

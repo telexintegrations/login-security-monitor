@@ -1,0 +1,41 @@
+{
+  "info": {
+    "name": "Auth Monitor Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "SQL Injection Test",
+      "request": {
+        "method": "POST",
+        "url": "https://t2bhhd4t-3000.uks1.devtunnels.ms/webhook",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event_type\": \"failed_login\",\n  \"payload\": {\n    \"userId\": \"admin\",\n    \"timestamp\": {{$timestamp}},\n    \"ipAddress\": \"192.168.1.1\",\n    \"eventType\": \"failed_login\",\n    \"queryType\": \"SELECT * FROM users WHERE username = 'admin' UNION SELECT * FROM sensitive_data;--\",\n    \"success\": false,\n    \"attempts\": 1\n  },\n  \"settings\": {\n    \"db_connection_string\": \"{{db_connection}}\",\n    \"auth_key\": \"{{auth_key}}\",\n    \"alert_threshold\": 5,\n    \"time_window\": 15,\n    \"alert_severity\": \"Critical\",\n    \"alert_admins\": [\"Security-Admin\"],\n    \"monitored_events\": [\"failed_login\", \"sql_injection_attempt\"]\n  }\n}"
+        }
+      }
+    },
+    {
+      "name": "Brute Force Test",
+      "request": {
+        "method": "POST",
+        "url": "https://t2bhhd4t-3000.uks1.devtunnels.ms/webhook",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event_type\":\"login_attempt\",\"payload\":{\"userId\":\"user123\",\"timestamp\":{{$timestamp}},\"ipAddress\":\"192.168.1.2\",\"eventType\":\"login_attempt\",\"success\":false,\"attempts\":6},\"settings\":{\"db_connection_string\":\"{{db_connection}}\",\"auth_key\":\"{{auth_key}}\",\"alert_threshold\":5,\"time_window\":15,\"alert_severity\":\"High\",\"alert_admins\":[\"DevOps-Lead\"],\"monitored_events\":[\"login_attempt\"]}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
