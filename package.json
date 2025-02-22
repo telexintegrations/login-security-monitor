@@ -10,7 +10,9 @@
     "lint": "eslint . --ext .ts",
     "test:watch": "jest --watchAll --detectOpenHandles --runInBand --verbose --testTimeout=60000",
     "test:coverage": "jest --coverage --detectOpenHandles --forceExit --runInBand --verbose --testTimeout=60000",
-    "test:ci": "jest --ci --coverage --detectOpenHandles"
+    "verify": "ts-node src/scripts/verifySetup.ts",
+    "check-db": "ts-node src/scripts/checkDb.ts",
+    "test:real": "ts-node src/scripts/realWorldTest.ts"
   },
   "keywords": [],
   "author": "",

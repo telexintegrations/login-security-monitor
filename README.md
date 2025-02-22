@@ -96,6 +96,27 @@ npm test
 # Start development server
 npm run dev
 ```
+
+## 🧪 Testing & Validation
+
+### Verify Setup
+```bash
+# Check environment and connections
+npm run verify
+```
+
+### Database Validation
+```bash
+# Check recent security events
+npm run check-db
+```
+
+### Real-world Testing
+```bash
+# Run simulated security events
+npm run test:real
+```
+
 ## 📸 Integration Screenshots
 
 ![Alert Example](docs/images/alert-example.png)
