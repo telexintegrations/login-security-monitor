@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: telex-auth-monitor
+    name: login-security-monitor
     env: node
     buildCommand: npm install && npm run build
     startCommand: npm start
