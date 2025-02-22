@@ -82,7 +82,7 @@
         "type": "multi-select",
         "description": "Authentication events to monitor",
         "required": true,
-        "default": "failed_login,unusual_pattern,password_change,privilege_escalation,account_lockout,sql_injection_attempt",
+        "default": "sql_injection_attempt,privilege_escalation,failed_login,unusual_pattern,password_change,account_lockout",
         "options": [
           "failed_login",
           "unusual_pattern",

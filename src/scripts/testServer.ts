@@ -6,8 +6,28 @@ dotenv.config();
 const testServer = async () => {
   const webhookUrl = process.env.TELEX_WEBHOOK_URL;
 
+  if (!webhookUrl) {
+    console.error(
+      "Error: TELEX_WEBHOOK_URL not found in environment variables"
+    );
+    process.exit(1);
+  }
+
   try {
-    // Test webhook with security alert
+    // First test: Direct Telex webhook test
+    console.log("🔍 Testing direct Telex webhook...");
+    const telexTest = {
+      event_name: "Security Monitor Test",
+      message: "✅ Testing security monitor integration",
+      status: "info",
+      username: "Security Monitor",
+    };
+
+    await axios.post(webhookUrl, telexTest);
+    console.log("✅ Direct Telex test successful");
+
+    // Second test: Security alert through integration
+    console.log("\n🔍 Testing security alert integration...");
     const testPayload = {
       event_type: "failed_login",
       payload: {
@@ -33,30 +53,30 @@ const testServer = async () => {
       "http://localhost:3000/webhook",
       testPayload
     );
-    console.log("Test response:", response.data);
+    console.log("✅ Integration test response:", response.data);
 
-    // Direct Telex webhook test
-    const telexTest = {
-      event_name: "Security Monitor Test",
-      message: "Testing security monitor integration",
-      status: "info",
-      username: "Security Monitor",
-    };
+    // Third test: Check integration spec
+    console.log("\n🔍 Checking integration spec...");
+    const specResponse = await axios.get(
+      "http://localhost:3000/integrationspec"
+    );
+    console.log("✅ Integration spec available");
 
-    await axios.post(webhookUrl!, telexTest);
-    console.log("Direct Telex test sent");
+    console.log("\n✅ All tests completed successfully!");
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error("Test failed:", {
+      console.error("❌ Test failed:", {
+        endpoint: error.config?.url,
         status: error.response?.status,
         data: error.response?.data,
         message: error.message,
       });
     } else {
-      console.error("Test failed:", error);
+      console.error("❌ Test failed:", error);
     }
+    process.exit(1);
   }
 };
 
-console.log("Starting integration tests...");
+console.log("🚀 Starting integration tests...");
 testServer();

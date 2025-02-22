@@ -3,7 +3,24 @@ import express from "express";
 import cors from "cors";
 import axios from "axios";
 import integrationSpec from "./config/integration.json";
+import { limiter } from "./middleware/rateLimiter";
+import logger from "./utils/logger";
+import { saveAuthEvent } from "./utils/db";
 
+// Simplified event type mapping
+const eventTypeMap = {
+  sql_injection_attempt: { name: "SQL Injection Attempt", emoji: "💉" },
+  failed_login: { name: "Login Alert", emoji: "🚨" },
+  unusual_pattern: { name: "Unusual Pattern", emoji: "🌐" },
+  password_change: { name: "Password Change", emoji: "🔑" },
+  privilege_escalation: { name: "Privilege Escalation", emoji: "⚡" },
+  account_lockout: { name: "Account Lockout", emoji: "🔒" },
+  login_attempt: { name: "Login Attempt", emoji: "🚨" },
+} as const;
+
+type EventType = keyof typeof eventTypeMap;
+
+// Update interfaces
 interface AuthPayload {
   userId: string;
   timestamp: number;
@@ -12,16 +29,22 @@ interface AuthPayload {
   queryType?: string;
   success: boolean;
   attempts?: number;
+  pattern?: string;
+  previousChange?: string;
+  currentRole?: string;
+  targetRole?: string;
+  lockoutDuration?: string;
 }
 
 interface AlertData {
   webhook_url: string;
   severity: string;
-  event: string;
+  event: EventType;
   details: AuthPayload;
+  settings: Settings;
 }
 
-// Add this interface after the existing interfaces
+// Add after the existing interfaces
 interface Settings {
   db_connection_string: string;
   auth_key: string;
@@ -32,20 +55,17 @@ interface Settings {
   monitored_events: string[];
 }
 
-// Update AlertData interface
-interface TelexWebhookPayload {
-  event_name: string;
-  message: string;
-  status: "success" | "info" | "warning" | "error";
-  username: string;
-  metadata?: Record<string, any>;
-}
-
 const app = express();
+
+// Add this line before other middleware
+app.set("trust proxy", 1);
 
 // Enable CORS
 app.use(cors());
 app.use(express.json());
+
+// Apply rate limiter
+app.use(limiter);
 
 // Root endpoint
 app.get("/", (_req, res) => {
@@ -58,42 +78,66 @@ app.get("/integrationspec", (_req, res) => {
   res.json(integrationSpec);
 });
 
-// Webhook endpoint to receive authentication events
+// Update the webhook handler
 app.post("/webhook", async (req, res) => {
   try {
     const { event_type, payload, settings } = req.body;
 
-    // Validate settings
-    if (!validateSettings(settings)) {
+    // Validate request body
+    if (!event_type || !payload || !settings) {
       return res.status(400).json({
-        error: "Invalid settings configuration",
+        error: "Missing required fields",
+        required: ["event_type", "payload", "settings"],
       });
     }
 
-    console.log("Received webhook event:", event_type);
-    console.log("Payload:", payload);
+    logger.info("📥 Received webhook request:", {
+      event_type,
+      payload,
+      settings,
+    });
 
-    // Only process events that are being monitored
+    const webhookUrl = process.env.TELEX_WEBHOOK_URL;
+    if (!webhookUrl) {
+      logger.error("TELEX_WEBHOOK_URL not configured");
+      return res.status(500).json({
+        error: "Webhook URL not configured",
+        setup_required: true,
+      });
+    }
+
+    // Validate event type
     if (!settings.monitored_events.includes(event_type)) {
-      return res.status(200).json({
-        status: "skipped",
-        message: "Event type not monitored",
-      });
+      logger.info(`Event type ${event_type} is not monitored`);
+      return res.status(200).json({ status: "skipped" });
     }
 
-    // Process the authentication event
+    // Save to database
+    await saveAuthEvent({
+      ...payload,
+      severity: settings.alert_severity,
+    });
+
+    // Check if it's a suspicious activity
     if (isSuspiciousActivity(payload)) {
+      const eventInfo = eventTypeMap[event_type as EventType];
+      if (!eventInfo) {
+        logger.warn(`Unknown event type: ${event_type}`);
+        return res.status(400).json({ error: "Unknown event type" });
+      }
+
       await sendTelexAlert({
-        webhook_url: process.env.TELEX_WEBHOOK_URL!,
+        webhook_url: webhookUrl,
         severity: settings.alert_severity,
-        event: event_type,
+        event: event_type as EventType,
         details: payload,
+        settings: settings,
       });
     }
 
     res.status(200).json({ status: "processed" });
   } catch (error) {
-    console.error("Webhook error:", error);
+    logger.error("❌ Error processing webhook:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -105,61 +149,102 @@ declare global {
 
 // Helper function to detect suspicious activity
 function isSuspiciousActivity(payload: AuthPayload): boolean {
-  // Check for common suspicious patterns
-  const suspiciousPatterns = [
-    // Failed login attempts exceed threshold
-    payload.eventType === "failed_login" && (payload.attempts || 0) >= 5,
+  // Always treat these events as suspicious
+   return true
 
-    // SQL injection attempts in query
-    payload.queryType?.toLowerCase().includes("union select") ||
-      payload.queryType?.toLowerCase().includes("drop table"),
+  //  const alwaysSuspicious = [
+  //   "sql_injection_attempt",
+  //   "privilege_escalation",
+  //   "unusual_pattern",
+  //   "account_lockout",
+  // ];
 
-    // Multiple rapid login attempts
-    payload.eventType === "login_attempt" &&
-      payload.timestamp - (globalThis.lastAttempt || 0) < 1000, // Less than 1 second apart
+  // if (alwaysSuspicious.includes(payload.eventType)) {
+  //   return true;
+  // }
 
-    // Privilege escalation attempts
-    payload.eventType === "permission_change" && !payload.success,
+  // // Check for specific conditions
+  // const suspiciousPatterns = [
+  //   // Failed login attempts exceed threshold
+  //   payload.eventType === "failed_login" && (payload.attempts || 0) >= 5,
 
-    // Account lockout events
-    payload.eventType === "account_lockout",
-  ];
+  //   // Multiple rapid login attempts
+  //   payload.eventType === "login_attempt" &&
+  //     payload.timestamp - (globalThis.lastAttempt || 0) < 1000,
 
-  // Update last attempt timestamp
-  globalThis.lastAttempt = payload.timestamp;
+  //   // Password changes
+  //   payload.eventType === "password_change" &&
+  //     payload.previousChange !== undefined,
+  // ];
 
-  // Return true if any suspicious pattern is detected
-  return suspiciousPatterns.some((pattern) => pattern === true);
+  // // Update last attempt timestamp
+  // globalThis.lastAttempt = payload.timestamp;
+
+  // return suspiciousPatterns.some((pattern) => pattern === true);
 }
 
-// Helper function to send alerts to Telex
+// Update sendTelexAlert function
 async function sendTelexAlert(data: AlertData): Promise<void> {
   try {
-    const telexPayload: TelexWebhookPayload = {
-      event_name: `Security Alert: ${data.event}`,
-      message:
-        `🚨 ${data.severity} Security Incident Detected\n\n` +
-        `Details:\n` +
-        `• User: ${data.details.userId}\n` +
-        `• IP Address: ${data.details.ipAddress}\n` +
-        `• Event Type: ${data.details.eventType}\n` +
-        `• Time: ${new Date(data.details.timestamp).toISOString()}\n` +
+    const eventInfo = eventTypeMap[data.event];
+    const telexPayload = {
+      event_name: `${eventInfo.emoji} ${eventInfo.name}`,
+      message: [
+        `${eventInfo.emoji} ${data.severity} Security Incident Detected\n`,
+        `Details:`,
+        `• User: ${data.details.userId}`,
+        `• IP Address: ${data.details.ipAddress}`,
+        `• Event Type: ${data.details.eventType}`,
+        `• Time: ${new Date(data.details.timestamp).toISOString()}`,
         `• Status: ${data.details.success ? "Success" : "Failed"}`,
-      status: data.severity.toLowerCase() === "high" ? "error" : "warning",
+        generateEventDetails(data),
+        `\nAlert Level: ${data.severity}`,
+        `Notified Admins: ${data.settings.alert_admins.join(", ")}`,
+      ].join("\n"),
+      status: data.severity.toLowerCase() === "critical" ? "error" : "warning",
       username: "Security Monitor",
-      metadata: {
-        attempts: data.details.attempts,
-        eventType: data.details.eventType,
-        ipAddress: data.details.ipAddress,
-        timestamp: data.details.timestamp,
-      },
     };
 
-    await axios.post(data.webhook_url, telexPayload);
-    console.log("Alert sent to Telex successfully");
+    logger.info(`🚀 Sending ${data.event} alert to Telex`);
+    const response = await axios.post(data.webhook_url, telexPayload, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 5000,
+    });
+
+    if (response.status === 202) {
+      logger.info(`✅ ${data.event} alert sent successfully:`, response.data);
+    } else {
+      throw new Error(`Unexpected response status: ${response.status}`);
+    }
   } catch (error) {
-    console.error("Failed to send alert to Telex:", error);
+    logger.error(`❌ Failed to send ${data.event} alert:`, error);
     throw error;
+  }
+}
+
+// Helper function to generate event-specific details
+function generateEventDetails(data: AlertData): string {
+  switch (data.event) {
+    case "sql_injection_attempt":
+      return data.details.queryType
+        ? `\nMalicious Query Details:\n${data.details.queryType}`
+        : "";
+    case "failed_login":
+      return `\nBrute Force Details:\n• Total Attempts: ${data.details.attempts}\n• Alert Threshold: ${data.settings.alert_threshold}\n• Time Window: ${data.settings.time_window} minutes`;
+    case "unusual_pattern":
+      return data.details.pattern
+        ? `\nPattern Details:\n${data.details.pattern}`
+        : "";
+    case "password_change":
+      return data.details.previousChange
+        ? `\nChange History:\n• Previous Change: ${data.details.previousChange}`
+        : "";
+    case "privilege_escalation":
+      return `\nEscalation Details:\n• Current Role: ${data.details.currentRole}\n• Attempted Role: ${data.details.targetRole}`;
+    case "account_lockout":
+      return `\nLockout Details:\n• Duration: ${data.details.lockoutDuration}\n• Failed Attempts: ${data.details.attempts}`;
+    default:
+      return "";
   }
 }
 
@@ -176,13 +261,5 @@ function validateSettings(settings: Settings): boolean {
     Array.isArray(settings.monitored_events)
   );
 }
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
-  console.log(
-    `Integration spec available at: http://localhost:${PORT}/integrationspec`
-  );
-});
 
 export default app;
