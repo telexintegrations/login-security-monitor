@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: telex-auth-monitor
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: TELEX_WEBHOOK_URL
+        sync: false
+    plan: starter
+    branch: main
