@@ -4,4 +4,4 @@ coverage/
 *.log
 .env
 .env.test
-.vscode
+.vscode/
