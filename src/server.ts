@@ -7,7 +7,7 @@ import { limiter } from "./middleware/rateLimiter";
 import logger from "./utils/logger";
 import { saveAuthEvent } from "./utils/db";
 
-// Simplified event type mapping
+// Security event types
 const eventTypeMap = {
   sql_injection_attempt: { name: "SQL Injection Attempt", emoji: "💉" },
   failed_login: { name: "Login Alert", emoji: "🚨" },
@@ -16,11 +16,14 @@ const eventTypeMap = {
   privilege_escalation: { name: "Privilege Escalation", emoji: "⚡" },
   account_lockout: { name: "Account Lockout", emoji: "🔒" },
   login_attempt: { name: "Login Attempt", emoji: "🚨" },
+  session_hijacking: { name: "Session Hijacking", emoji: "🕵️" },
+  brute_force: { name: "Brute Force Attack", emoji: "🔨" },
+  suspicious_ip: { name: "Suspicious IP Access", emoji: "🌍" },
 } as const;
 
 type EventType = keyof typeof eventTypeMap;
 
-// Update interfaces
+// Core interfaces
 interface AuthPayload {
   userId: string;
   timestamp: number;
@@ -34,6 +37,14 @@ interface AuthPayload {
   currentRole?: string;
   targetRole?: string;
   lockoutDuration?: string;
+  sessionId?: string;
+  originalIP?: string;
+  hijackedIP?: string;
+  timeWindow?: string;
+  targetEndpoint?: string;
+  country?: string;
+  vpnDetected?: boolean;
+  threatScore?: number;
 }
 
 interface AlertData {
@@ -44,7 +55,6 @@ interface AlertData {
   settings: Settings;
 }
 
-// Add after the existing interfaces
 interface Settings {
   db_connection_string: string;
   auth_key: string;
@@ -57,28 +67,22 @@ interface Settings {
 
 const app = express();
 
-// Add this line before other middleware
+// Middleware setup
 app.set("trust proxy", 1);
-
-// Enable CORS
 app.use(cors());
 app.use(express.json());
-
-// Apply rate limiter
 app.use(limiter);
 
-// Root endpoint
+// Base endpoints
 app.get("/", (_req, res) => {
   res.json({ status: "ok", message: "Auth Monitor Service" });
 });
 
-// Integration spec endpoint
 app.get("/integrationspec", (_req, res) => {
-  console.log("Serving integration spec");
   res.json(integrationSpec);
 });
 
-// Update the webhook handler
+// Main webhook handler
 app.post("/webhook", async (req, res) => {
   try {
     const { event_type, payload, settings } = req.body;
@@ -147,43 +151,11 @@ declare global {
   var lastAttempt: number | undefined;
 }
 
-// Helper function to detect suspicious activity
 function isSuspiciousActivity(payload: AuthPayload): boolean {
-  // Always treat these events as suspicious
-   return true
-
-  //  const alwaysSuspicious = [
-  //   "sql_injection_attempt",
-  //   "privilege_escalation",
-  //   "unusual_pattern",
-  //   "account_lockout",
-  // ];
-
-  // if (alwaysSuspicious.includes(payload.eventType)) {
-  //   return true;
-  // }
-
-  // // Check for specific conditions
-  // const suspiciousPatterns = [
-  //   // Failed login attempts exceed threshold
-  //   payload.eventType === "failed_login" && (payload.attempts || 0) >= 5,
-
-  //   // Multiple rapid login attempts
-  //   payload.eventType === "login_attempt" &&
-  //     payload.timestamp - (globalThis.lastAttempt || 0) < 1000,
-
-  //   // Password changes
-  //   payload.eventType === "password_change" &&
-  //     payload.previousChange !== undefined,
-  // ];
-
-  // // Update last attempt timestamp
-  // globalThis.lastAttempt = payload.timestamp;
-
-  // return suspiciousPatterns.some((pattern) => pattern === true);
+  return true;
 }
 
-// Update sendTelexAlert function
+// Alert sending
 async function sendTelexAlert(data: AlertData): Promise<void> {
   try {
     const eventInfo = eventTypeMap[data.event];
@@ -222,7 +194,7 @@ async function sendTelexAlert(data: AlertData): Promise<void> {
   }
 }
 
-// Helper function to generate event-specific details
+// Event details generation
 function generateEventDetails(data: AlertData): string {
   switch (data.event) {
     case "sql_injection_attempt":
@@ -243,23 +215,15 @@ function generateEventDetails(data: AlertData): string {
       return `\nEscalation Details:\n• Current Role: ${data.details.currentRole}\n• Attempted Role: ${data.details.targetRole}`;
     case "account_lockout":
       return `\nLockout Details:\n• Duration: ${data.details.lockoutDuration}\n• Failed Attempts: ${data.details.attempts}`;
+    case "session_hijacking":
+      return `\nHijacking Details:\n• Session ID: ${data.details.sessionId}\n• Original IP: ${data.details.originalIP}\n• Hijacked IP: ${data.details.hijackedIP}`;
+    case "brute_force":
+      return `\nAttack Details:\n• Attempts: ${data.details.attempts}\n• Time Window: ${data.details.timeWindow}\n• Target: ${data.details.targetEndpoint}`;
+    case "suspicious_ip":
+      return `\nThreat Details:\n• Country: ${data.details.country}\n• VPN Detected: ${data.details.vpnDetected}\n• Threat Score: ${data.details.threatScore}`;
     default:
       return "";
   }
-}
-
-// Add this function to validate settings
-function validateSettings(settings: Settings): boolean {
-  return !!(
-    settings &&
-    settings.db_connection_string &&
-    settings.auth_key &&
-    typeof settings.alert_threshold === "number" &&
-    typeof settings.time_window === "number" &&
-    settings.alert_severity &&
-    Array.isArray(settings.alert_admins) &&
-    Array.isArray(settings.monitored_events)
-  );
 }
 
 export default app;

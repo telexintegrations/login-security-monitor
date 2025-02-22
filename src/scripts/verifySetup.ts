@@ -1,22 +1,23 @@
-import dotenv from 'dotenv';
-import { MongoClient } from 'mongodb';
-import axios from 'axios';
-import logger from '../utils/logger';
+import dotenv from "dotenv";
+import { MongoClient } from "mongodb";
+import axios from "axios";
+import logger from "../utils/logger";
 
 dotenv.config();
 
+// Verify environment setup
 async function verifySetup() {
   logger.info("🔍 Verifying setup...");
-  
-  // Check environment variables
-  const requiredEnvVars = ['TELEX_WEBHOOK_URL', 'MONGODB_URI'];
-  const missingVars = requiredEnvVars.filter(v => !process.env[v]);
-  
+
+  // Verify env vars
+  const requiredEnvVars = ["TELEX_WEBHOOK_URL", "MONGODB_URI"];
+  const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
+
   if (missingVars.length > 0) {
     logger.error("❌ Missing environment variables:", missingVars);
     return false;
   }
-  
+
   // Test MongoDB connection
   try {
     const client = new MongoClient(process.env.MONGODB_URI!);
@@ -27,7 +28,7 @@ async function verifySetup() {
     logger.error("❌ MongoDB connection failed:", error);
     return false;
   }
-  
+
   // Test Telex webhook
   try {
     const response = await axios.get(process.env.TELEX_WEBHOOK_URL!);
@@ -36,13 +37,13 @@ async function verifySetup() {
     logger.error("❌ Telex webhook error:", error);
     return false;
   }
-  
+
   logger.info("✅ Setup verification complete");
   return true;
 }
 
 // Run verification
-verifySetup().then(success => {
+verifySetup().then((success) => {
   if (!success) {
     process.exit(1);
   }

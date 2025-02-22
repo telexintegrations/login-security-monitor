@@ -1,11 +1,11 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import logger from "../utils/logger";
-import { z } from "zod"; // Add zod for runtime validation
+import { z } from "zod";
 
 dotenv.config();
 
-// Event type validation schema
+// Core validation schemas
 const EventTypeSchema = z.enum([
   "sql_injection_attempt",
   "failed_login",
@@ -13,23 +13,23 @@ const EventTypeSchema = z.enum([
   "password_change",
   "privilege_escalation",
   "account_lockout",
+  "session_hijacking",
+  "brute_force",
+  "suspicious_ip",
 ]);
 
-// Severity level validation
 const SeveritySchema = z.enum(["Critical", "High", "Medium", "Low"]);
-
-// Settings validation schema
 const SettingsSchema = z.object({
   db_connection_string: z.string().url(),
   auth_key: z.string().min(1),
   alert_threshold: z.number().min(1),
-  time_window: z.number().min(0), // Allow 0 for immediate response
+  time_window: z.number().min(0),
   alert_severity: SeveritySchema,
   alert_admins: z.array(z.string()).min(1),
   monitored_events: z.array(EventTypeSchema).min(1),
 });
 
-// Base configuration for all events
+// Base settings for all tests
 const baseSettings = {
   db_connection_string: process.env.MONGODB_URI!,
   auth_key: process.env.AUTH_KEY!,
@@ -40,10 +40,12 @@ const baseSettings = {
     "password_change",
     "privilege_escalation",
     "account_lockout",
+    "session_hijacking",
+    "brute_force",
+    "suspicious_ip",
   ],
 };
 
-// Add type for event configs
 type EventConfig = {
   severity: z.infer<typeof SeveritySchema>;
   threshold: number;
@@ -51,7 +53,7 @@ type EventConfig = {
   responseTime: number;
 };
 
-// Update event configs to ensure immediate alerts
+// Event configurations
 const eventConfigs: Record<z.infer<typeof EventTypeSchema>, EventConfig> = {
   sql_injection_attempt: {
     severity: "Critical",
@@ -90,8 +92,27 @@ const eventConfigs: Record<z.infer<typeof EventTypeSchema>, EventConfig> = {
     admins: ["Security-Admin"],
     responseTime: 0, // Changed from 15 to immediate
   },
+  session_hijacking: {
+    severity: "Critical",
+    threshold: 1,
+    admins: ["Security-Admin"],
+    responseTime: 0,
+  },
+  brute_force: {
+    severity: "Critical",
+    threshold: 1,
+    admins: ["Security-Admin"],
+    responseTime: 0,
+  },
+  suspicious_ip: {
+    severity: "Critical",
+    threshold: 1,
+    admins: ["Security-Admin"],
+    responseTime: 0,
+  },
 } as const;
 
+// Test simulation
 async function simulateSecurityEvents() {
   const BASE_URL = "http://localhost:3000/webhook";
   logger.info("🔧 Using webhook URL:", process.env.TELEX_WEBHOOK_URL);
@@ -157,7 +178,7 @@ async function simulateSecurityEvents() {
   }
 }
 
-// Helper function to generate event-specific payloads
+// Payload generation
 function generateEventPayload(eventType: string) {
   const basePayload = {
     userId: `test@${eventType}.com`,
@@ -204,13 +225,37 @@ function generateEventPayload(eventType: string) {
         success: false,
         lockoutDuration: "30 minutes",
       };
+    case "session_hijacking":
+      return {
+        ...basePayload,
+        sessionId: "sess_" + Math.random().toString(36).substr(2, 9),
+        originalIP: "192.168.1.100",
+        hijackedIP: "45.227.253." + Math.floor(Math.random() * 255),
+        tokenHash: "compromised_token_" + Date.now(),
+      };
+    case "brute_force":
+      return {
+        ...basePayload,
+        attempts: 20,
+        timeWindow: "5 minutes",
+        targetEndpoint: "/api/login",
+        toolSignature: "Known botnet pattern",
+      };
+    case "suspicious_ip":
+      return {
+        ...basePayload,
+        ipAddress: "45.227.253." + Math.floor(Math.random() * 255),
+        country: "Unknown",
+        vpnDetected: true,
+        threatScore: 85,
+      };
     default:
       return basePayload;
   }
 }
 
-logger.info("🚀 Starting comprehensive security tests...");
+logger.info("🚀 Starting security tests...");
 simulateSecurityEvents().catch((error) => {
-  logger.error("❌ Test suite failed:", error);
+  logger.error("❌ Test failed:", error);
   process.exit(1);
 });

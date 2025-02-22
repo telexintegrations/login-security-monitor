@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// Check recent security events
 async function checkEvents() {
   const client = new MongoClient(process.env.MONGODB_URI!);
   try {

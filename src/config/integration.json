@@ -82,14 +82,17 @@
         "type": "multi-select",
         "description": "Authentication events to monitor",
         "required": true,
-        "default": "sql_injection_attempt,privilege_escalation,failed_login,unusual_pattern,password_change,account_lockout",
+        "default": "sql_injection_attempt,privilege_escalation,failed_login,unusual_pattern,password_change,account_lockout,session_hijacking,brute_force,suspicious_ip",
         "options": [
           "failed_login",
           "unusual_pattern",
           "password_change",
           "privilege_escalation",
           "account_lockout",
-          "sql_injection_attempt"
+          "sql_injection_attempt",
+          "session_hijacking",
+          "brute_force",
+          "suspicious_ip"
         ]
       }
     ],
