@@ -2,8 +2,6 @@
 
 A Telex Output Integration that monitors authentication logs from your website platform to detect and alert on suspicious login activities.
 
-![Security Monitor](docs/images/banner.png)
-
 ## 🔍 Overview
 
 This integration monitors authentication system by:
@@ -18,12 +16,17 @@ This integration monitors authentication system by:
 
 ## ⚡ Key Features
 
-- 🔐 Real-time authentication log monitoring
-- 🚨 Failed login attempt detection
-- 📊 SQL injection attempt detection
-- 🕒 Rate limiting and brute force protection
-- 📝 Comprehensive event logging
+- 🚨 Real-time security event monitoring
+- 🔒 Multiple security event detection
+  - SQL Injection attempts
+  - Brute force attacks
+  - Session hijacking
+  - Privilege escalation
+  - Suspicious IP access
+- 📊 MongoDB event logging
+- ⚡ Rate limiting protection
 - 🎯 Configurable alert thresholds
+- 📱 Instant Telex notifications
 
 ## 🚀 Quick Start
 
@@ -51,9 +54,10 @@ cp .env.example .env
 
 1. Set up your environment variables:
 ```properties
-TELEX_WEBHOOK_URL=your_telex_webhook_url
+TELEX_WEBHOOK_URL=your_webhook_url
+MONGODB_URI=your_mongodb_uri
+NODE_ENV=production
 PORT=3000
-NODE_ENV=development
 ```
 
 2. Configure the integration in Telex:
@@ -65,38 +69,34 @@ NODE_ENV=development
   - Alert thresholds
   - Monitored events
 
-## 🧪 Testing
+
+## 🔍 API Usage
+
+### Send Security Event
 
 ```bash
-# Run all tests
-npm test
-
-# Run with coverage
-npm run test:coverage
-
-# Test specific scenarios
-npm run test:scenarios
-```
-
-### Test Security Events
-
-```bash
-# Test failed login detection
 curl -X POST "http://localhost:3000/webhook" \
 -H "Content-Type: application/json" \
 -d '{
-  "event_type": "failed_login",
+  "event_type": "sql_injection_attempt",
   "payload": {
-    "userId": "test123",
+    "userId": "user123",
     "timestamp": 1708633200000,
     "ipAddress": "192.168.1.1",
-    "eventType": "failed_login",
-    "success": false,
-    "attempts": 6
+    "eventType": "sql_injection_attempt"
   }
 }'
 ```
 
+## 🧪 Development
+
+```bash
+# Run tests
+npm test
+
+# Start development server
+npm run dev
+```
 ## 📸 Integration Screenshots
 
 ![Alert Example](docs/images/alert-example.png)
@@ -107,24 +107,14 @@ curl -X POST "http://localhost:3000/webhook" \
 ```
 /
 ├── src/
-│   ├── config/        # Configuration files
+│   ├── config/        # Configuration
 │   ├── middleware/    # Express middleware
-│   ├── utils/         # Helper functions
-│   ├── __tests__/     # Test files
-│   └── scripts/       # Test scripts
-├── docs/             # Documentation and images
+│   ├── utils/         # Helpers
+│   ├── models/        # Data models
+│   └── __tests__/     # Test suite
+├── .env.example
 └── README.md
 ```
-
-## 🔒 Security Features
-
-- Rate limiting to prevent brute force attacks
-- SQL injection detection
-- Unusual login pattern detection
-- IP-based suspicious activity monitoring
-- Configurable alert thresholds
-
-## 📚 API Documentation
 
 ### Webhook Endpoint
 

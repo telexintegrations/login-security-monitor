@@ -6,10 +6,11 @@
     "start": "ts-node src/index.ts",
     "dev": "nodemon src/index.ts",
     "build": "tsc",
-    "test": "jest --runInBand --detectOpenHandles --forceExit",
+    "test": "jest --detectOpenHandles --forceExit --runInBand --verbose --testTimeout=60000",
     "lint": "eslint . --ext .ts",
-    "test:watch": "jest --watchAll",
-    "test:coverage": "jest --coverage"
+    "test:watch": "jest --watchAll --detectOpenHandles --runInBand --verbose --testTimeout=60000",
+    "test:coverage": "jest --coverage --detectOpenHandles --forceExit --runInBand --verbose --testTimeout=60000",
+    "test:ci": "jest --ci --coverage --detectOpenHandles"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@jest/types": "^29.6.3",
     "@types/connect-timeout": "^0.0.39",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",

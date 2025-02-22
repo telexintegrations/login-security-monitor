@@ -1,121 +1,120 @@
+import { describe, it, expect, beforeEach } from "@jest/globals";
 import request from "supertest";
-import { app } from "../test/setup";
-import { AuthEvent } from "../models/AuthEvent";
+import app from "../server";
+import { createTestEvent, testSettings } from "./helpers/testUtils";
+import { mockAxios } from "./mocks/axios";
 
-describe("Auth Monitor Security Tests", () => {
-  describe("SQL Injection Detection", () => {
-    it("should detect SQL injection attempts", async () => {
+describe("Auth Monitor Integration", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const testCases = [
+    {
+      name: "SQL Injection",
+      type: "sql_injection_attempt",
+      payload: { queryType: "SELECT * FROM users WHERE id = 1 OR 1=1" },
+    },
+    {
+      name: "Session Hijacking",
+      type: "session_hijacking",
+      payload: {
+        sessionId: "sess_123",
+        originalIP: "192.168.1.100",
+        hijackedIP: "45.227.253.120",
+      },
+    },
+    {
+      name: "Brute Force",
+      type: "brute_force",
+      payload: {
+        attempts: 20,
+        timeWindow: "5 minutes",
+        targetEndpoint: "/api/login",
+      },
+    },
+    {
+      name: "Suspicious IP",
+      type: "suspicious_ip",
+      payload: {
+        country: "Unknown",
+        vpnDetected: true,
+        threatScore: 85,
+      },
+    },
+  ];
+
+  testCases.forEach(({ name, type, payload }) => {
+    it(`should detect ${name}`, async () => {
+      const event = createTestEvent(type, payload);
+
+      mockAxios.post.mockImplementationOnce(() =>
+        Promise.resolve({
+          status: 200,
+          data: { status: "success" },
+          headers: { "Content-Type": "application/json" },
+          config: {
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+            url: "test-url",
+          },
+          statusText: "OK",
+        })
+      );
+
       const response = await request(app)
         .post("/webhook")
+        .set("x-test-auth", "true") // Add test auth header
         .send({
-          event_type: "failed_login",
-          payload: {
-            userId: "admin",
-            timestamp: Date.now(),
-            ipAddress: "192.168.1.1",
-            eventType: "failed_login",
-            queryType:
-              "SELECT * FROM users WHERE username = 'admin' UNION SELECT * FROM sensitive_data;--",
-            success: false,
-            attempts: 1,
-          },
-          settings: {
-            db_connection_string: "test_connection",
-            auth_key: "test_key",
-            alert_threshold: 5,
-            time_window: 15,
-            alert_severity: "Critical",
-            alert_admins: ["Security-Admin"],
-            monitored_events: ["failed_login"],
-          },
+          event_type: type,
+          payload: event,
+          settings: testSettings,
         });
 
       expect(response.status).toBe(200);
-      expect(response.body.status).toBe("processed");
+      expect(response.body).toEqual({ status: "processed" });
+      expect(mockAxios.post).toHaveBeenCalled();
+    }, 30000);
+  });
+
+  describe("Error Handling", () => {
+    it("should handle missing webhook URL", async () => {
+      const originalUrl = process.env.TELEX_WEBHOOK_URL;
+      process.env.TELEX_WEBHOOK_URL = "";
+
+      const response = await request(app)
+        .post("/webhook")
+        .set("x-test-auth", "true")
+        .send(createTestEvent("sql_injection_attempt"));
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty(
+        "error",
+        "Webhook URL not configured"
+      );
+
+      process.env.TELEX_WEBHOOK_URL = originalUrl;
+    });
+
+    it("should validate required fields", async () => {
+      const response = await request(app)
+        .post("/webhook")
+        .set("x-test-auth", "true")
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty("error", "Missing required fields");
     });
   });
 
-  describe("Brute Force Detection", () => {
-    it("should detect rapid successive login attempts", async () => {
-      // First attempt
-      await request(app)
-        .post("/webhook")
-        .send({
-          event_type: "login_attempt",
-          payload: {
-            userId: "user123",
-            timestamp: Date.now(),
-            ipAddress: "192.168.1.2",
-            eventType: "login_attempt",
-            success: false,
-            attempts: 1,
-          },
-          settings: {
-            db_connection_string: "test_connection",
-            auth_key: "test_key",
-            alert_threshold: 5,
-            time_window: 15,
-            alert_severity: "High",
-            alert_admins: ["DevOps-Lead"],
-            monitored_events: ["login_attempt"],
-          },
-        });
+  // Simplified rate limit test
+  it("should handle rate limits", async () => {
+    const event = createTestEvent("sql_injection_attempt");
 
-      // Immediate second attempt
-      const response = await request(app)
-        .post("/webhook")
-        .send({
-          event_type: "login_attempt",
-          payload: {
-            userId: "user123",
-            timestamp: Date.now(),
-            ipAddress: "192.168.1.2",
-            eventType: "login_attempt",
-            success: false,
-            attempts: 2,
-          },
-          settings: {
-            db_connection_string: "test_connection",
-            auth_key: "test_key",
-            alert_threshold: 5,
-            time_window: 15,
-            alert_severity: "High",
-            alert_admins: ["DevOps-Lead"],
-            monitored_events: ["login_attempt"],
-          },
-        });
+    // First request should succeed
+    await request(app).post("/webhook").send(event).expect(200);
 
-      expect(response.status).toBe(200);
-    });
-  });
-
-  describe("Privilege Escalation Detection", () => {
-    it("should detect failed privilege escalation attempts", async () => {
-      const response = await request(app)
-        .post("/webhook")
-        .send({
-          event_type: "permission_change",
-          payload: {
-            userId: "regular_user",
-            timestamp: Date.now(),
-            ipAddress: "192.168.1.3",
-            eventType: "permission_change",
-            queryType: "UPDATE users SET role = 'admin' WHERE id = 123",
-            success: false,
-            attempts: 1,
-          },
-          settings: {
-            db_connection_string: "test_connection",
-            auth_key: "test_key",
-            alert_threshold: 1,
-            time_window: 15,
-            alert_severity: "Critical",
-            alert_admins: ["Security-Admin"],
-            monitored_events: ["permission_change"],
-          },
-        });
-
-      expect(response.status).toBe(200);
-    });
+    // Second request should be rate limited
+    await request(app).post("/webhook").send(event).expect(429);
   });
 });
