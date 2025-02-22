@@ -41,7 +41,7 @@ This integration monitors authentication system by:
 
 ```bash
 # Clone the repository
-git clone https://github.com/telex_integrations/jobjott-auth-monitor.git
+git clone https://github.com/telexintegrations/telex-auth-monitor.git
 
 # Install dependencies
 npm install
