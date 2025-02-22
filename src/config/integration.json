@@ -8,7 +8,7 @@
       "app_description": "Monitors authentication events and security incidents with real-time alerts",
       "app_logo": "https://res.cloudinary.com/dmmz1qe2d/image/upload/v1739811402/svgexport-49_nwdjch.svg",
       "app_name": "Auth Monitor & Security Alerts",
-      "app_url": "https://t2bhhd4t-3000.uks1.devtunnels.ms",
+      "app_url": "https://login-security-monitor.onrender.com",
       "background_color": "#111313"
     },
     "integration_category": "Security & Compliance",
@@ -97,7 +97,7 @@
       }
     ],
     "tick_url": "",
-    "target_url": "https://t2bhhd4t-3000.uks1.devtunnels.ms/test-webhook",
+    "target_url": "https://login-security-monitor.onrender.com/test-webhook",
     "author": "Daggahhh",
     "version": "1.0.0"
   }

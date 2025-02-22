@@ -41,8 +41,7 @@ This integration monitors authentication system by:
 
 ```bash
 # Clone the repository
-git clone https://github.com/telexintegrations/telex-auth-monitor.git
-
+git clone https://github.com/telexintegrations/login-security-monitor.git
 # Install dependencies
 npm install
 
