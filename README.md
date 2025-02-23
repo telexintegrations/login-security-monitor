@@ -159,6 +159,79 @@ Content-Type: application/json
 }
 ```
 
+# Postman Testing Guide
+
+## Environment Setup
+
+1. Create a new environment in Postman:
+   - Click "Environments" → "Create Environment"
+   - Name it "Auth Monitor - Local"
+
+2. Add these variables:
+```
+BASE_URL: http://localhost:3000
+TELEX_WEBHOOK_URL: your_telex_webhook_url
+AUTH_KEY: your_auth_key
+```
+
+## Import Collection
+
+1. Import the `Auth_Monitor_Tests.postman_collection.json`
+2. Select the "Auth Monitor - Local" environment
+
+## Test Scenarios
+
+### 1. Health Check
+- Endpoint: GET `/health`
+- Expected: 200 OK with uptime info
+
+### 2. Failed Login Attempt
+- Endpoint: POST `/webhook`
+- Simulates multiple failed login attempts
+- Check Telex channel for alert
+
+### 3. SQL Injection Attempt
+- Endpoint: POST `/webhook`
+- Simulates SQL injection detection
+- Verify alert severity is "Critical"
+
+### 4. Successful Login
+- Endpoint: POST `/webhook`
+- Includes device and location info
+- Confirms normal login behavior
+
+### 5. Privilege Escalation
+- Endpoint: POST `/webhook`
+- Tests unauthorized admin access attempts
+- Verifies security team notification
+
+## Running Tests
+
+1. Start your local server:
+```bash
+npm run dev
+```
+
+2. In Postman:
+   - Select the collection
+   - Click "Run Collection"
+   - Choose test order
+   - Click "Run Auth Monitor Tests"
+
+## Validation
+
+Each request should:
+1. Return 200/202 status
+2. Generate Telex notification
+3. Log event to database
+4. Follow rate limiting rules
+
+## Common Issues
+
+- **401 Unauthorized**: Check AUTH_KEY
+- **404 Not Found**: Verify BASE_URL
+- **400 Bad Request**: Validate request body
+
 ## 🚀 Deployment
 
 1. Host your integration.json file publicly

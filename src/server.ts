@@ -20,6 +20,7 @@ const eventTypeMap = {
   session_hijacking: { name: "Session Hijacking", emoji: "🕵️" },
   brute_force: { name: "Brute Force Attack", emoji: "🔨" },
   suspicious_ip: { name: "Suspicious IP Access", emoji: "🌍" },
+  login_success: { name: "Successful Login", emoji: "✅" },
 } as const;
 
 type EventType = keyof typeof eventTypeMap;
@@ -46,6 +47,12 @@ interface AuthPayload {
   country?: string;
   vpnDetected?: boolean;
   threatScore?: number;
+  location?: string;
+  deviceInfo?: {
+    browser?: string;
+    os?: string;
+    device?: string;
+  };
 }
 
 interface AlertData {
@@ -238,6 +245,12 @@ function generateEventDetails(data: AlertData): string {
       return `\nAttack Details:\n• Attempts: ${data.details.attempts}\n• Time Window: ${data.details.timeWindow}\n• Target: ${data.details.targetEndpoint}`;
     case "suspicious_ip":
       return `\nThreat Details:\n• Country: ${data.details.country}\n• VPN Detected: ${data.details.vpnDetected}\n• Threat Score: ${data.details.threatScore}`;
+    case "login_success":
+      return `\nLogin Details:
+• Location: ${data.details.location || "Unknown"}
+• Browser: ${data.details.deviceInfo?.browser || "Unknown"}
+• OS: ${data.details.deviceInfo?.os || "Unknown"}
+• Device: ${data.details.deviceInfo?.device || "Unknown"}`;
     default:
       return "";
   }

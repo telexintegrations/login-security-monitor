@@ -1,0 +1,97 @@
+{
+  "info": {
+    "name": "Auth Monitor Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{BASE_URL}}/health"
+      }
+    },
+    {
+      "name": "2. Failed Login Attempt",
+      "request": {
+        "method": "POST",
+        "url": "{{BASE_URL}}/webhook",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event_type\":\"failed_login\",\"payload\":{\"userId\":\"test123\",\"timestamp\":{{$timestamp}},\"ipAddress\":\"192.168.1.1\",\"eventType\":\"failed_login\",\"success\":false,\"attempts\":6},\"settings\":{\"webhook_url\":\"{{TELEX_WEBHOOK_URL}}\",\"auth_key\":\"{{AUTH_KEY}}\",\"alert_threshold\":5,\"time_window\":15,\"alert_severity\":\"High\",\"alert_admins\":[\"DevOps-Lead\"],\"monitored_events\":[\"failed_login\"]}}"
+        }
+      }
+    },
+    {
+      "name": "3. SQL Injection Attempt",
+      "request": {
+        "method": "POST",
+        "url": "{{BASE_URL}}/webhook",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event_type\":\"sql_injection_attempt\",\"payload\":{\"userId\":\"admin\",\"timestamp\":{{$timestamp}},\"ipAddress\":\"192.168.1.1\",\"eventType\":\"sql_injection_attempt\",\"queryType\":\"SELECT * FROM users WHERE username = 'admin' UNION SELECT\",\"success\":false,\"attempts\":1},\"settings\":{\"webhook_url\":\"{{TELEX_WEBHOOK_URL}}\",\"auth_key\":\"{{AUTH_KEY}}\",\"alert_threshold\":5,\"time_window\":15,\"alert_severity\":\"Critical\",\"alert_admins\":[\"Security-Admin\"],\"monitored_events\":[\"sql_injection_attempt\"]}}"
+        }
+      }
+    },
+    {
+      "name": "4. Successful Login",
+      "request": {
+        "method": "POST",
+        "url": "{{BASE_URL}}/webhook",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event_type\":\"login_success\",\"payload\":{\"userId\":\"john.doe@example.com\",\"timestamp\":{{$timestamp}},\"ipAddress\":\"192.168.1.100\",\"eventType\":\"login_success\",\"success\":true,\"attempts\":1,\"location\":\"New York, US\",\"deviceInfo\":{\"browser\":\"Chrome\",\"os\":\"Windows\",\"device\":\"Desktop\"}},\"settings\":{\"webhook_url\":\"{{TELEX_WEBHOOK_URL}}\",\"auth_key\":\"{{AUTH_KEY}}\",\"alert_threshold\":1,\"time_window\":15,\"alert_severity\":\"Info\",\"alert_admins\":[\"Security-Team\"],\"monitored_events\":[\"login_success\"]}}"
+        }
+      }
+    },
+    {
+      "name": "5. Privilege Escalation",
+      "request": {
+        "method": "POST",
+        "url": "{{BASE_URL}}/webhook",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event_type\":\"privilege_escalation\",\"payload\":{\"userId\":\"regular_user\",\"timestamp\":{{$timestamp}},\"ipAddress\":\"192.168.1.3\",\"eventType\":\"privilege_escalation\",\"queryType\":\"UPDATE users SET role = 'admin' WHERE id = 123\",\"success\":false,\"attempts\":1},\"settings\":{\"webhook_url\":\"{{TELEX_WEBHOOK_URL}}\",\"auth_key\":\"{{AUTH_KEY}}\",\"alert_threshold\":1,\"time_window\":15,\"alert_severity\":\"Critical\",\"alert_admins\":[\"Security-Admin\"],\"monitored_events\":[\"privilege_escalation\"]}}"
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:3000" 
+    },
+    {
+      "key": "TELEX_WEBHOOK_URL",
+      "value": "https://ping.telex.im/v1/webhooks/0195325c-ecf4-75e9-b5ce-f2f27fb3bf94"
+    },
+    {
+      "key": "AUTH_KEY",
+      "value": "1234567"
+    }
+  ]
+}

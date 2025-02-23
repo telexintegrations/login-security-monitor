@@ -2,6 +2,7 @@ import request from "supertest";
 import mongoose from "mongoose";
 import { AuthEvent } from "../models/AuthEvent";
 import { app, server } from "./helpers/setup";
+import axios from "axios";
 
 describe("Auth Monitor Integration Tests", () => {
   beforeEach(async () => {
@@ -115,6 +116,90 @@ describe("Auth Monitor Integration Tests", () => {
       const storedEvents = await AuthEvent.find({ userId: "admin" });
       console.log("Stored events:", storedEvents); // Add this for debugging
       expect(storedEvents).toHaveLength(1);
+    }, 30000);
+  });
+
+  describe("Login Notifications", () => {
+    it("should send successful login notification to Telex", async () => {
+      const response = await request(app)
+        .post("/webhook")
+        .send({
+          event_type: "login_success",
+          payload: {
+            userId: "john.doe@example.com",
+            timestamp: Date.now(),
+            ipAddress: "192.168.1.100",
+            eventType: "login_success",
+            success: true,
+            attempts: 1,
+            location: "New York, US",
+            deviceInfo: {
+              browser: "Chrome",
+              os: "Windows",
+              device: "Desktop",
+            },
+          },
+          settings: {
+            webhook_url: process.env.TELEX_WEBHOOK_URL,
+            auth_key: process.env.AUTH_KEY || "test_key",
+            alert_threshold: 1,
+            time_window: 15,
+            alert_severity: "Info",
+            alert_admins: ["Security-Team"],
+            monitored_events: ["login_success"],
+          },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ status: "processed" });
+    }, 30000);
+
+    it("should include user location in login success message", async () => {
+      const mockAxios = jest.spyOn(axios, "post");
+
+      await request(app)
+        .post("/webhook")
+        .send({
+          event_type: "login_success",
+          payload: {
+            userId: "jane.smith@example.com",
+            timestamp: Date.now(),
+            ipAddress: "192.168.1.200",
+            eventType: "login_success",
+            success: true,
+            attempts: 1,
+            location: "London, UK",
+            deviceInfo: {
+              browser: "Firefox",
+              os: "MacOS",
+              device: "Laptop",
+            },
+          },
+          settings: {
+            webhook_url: process.env.TELEX_WEBHOOK_URL,
+            auth_key: process.env.AUTH_KEY || "test_key",
+            alert_threshold: 1,
+            time_window: 15,
+            alert_severity: "Info",
+            alert_admins: ["Security-Team"],
+            monitored_events: ["login_success"],
+          },
+        });
+
+      // Updated assertion to match actual Telex response format
+      expect(mockAxios).toHaveBeenCalledWith(
+        expect.stringContaining("telex.im"),
+        expect.objectContaining({
+          event_name: "✅ Successful Login",
+          message: expect.stringMatching(/Location: London, UK/),
+          status: "warning",
+          username: "Security Monitor",
+        }),
+        expect.objectContaining({
+          headers: { "Content-Type": "application/json" },
+          timeout: 5000,
+        })
+      );
     }, 30000);
   });
 });
