@@ -74,7 +74,7 @@ PORT=3000
 ### Send Security Event
 
 ```bash
-curl -X POST "http://localhost:3000/webhook" \
+curl -X POST "https://login-security-monitor.onrender.com/webhook" \
 -H "Content-Type: application/json" \
 -d '{
   "event_type": "sql_injection_attempt",
@@ -83,6 +83,15 @@ curl -X POST "http://localhost:3000/webhook" \
     "timestamp": 1708633200000,
     "ipAddress": "192.168.1.1",
     "eventType": "sql_injection_attempt"
+  },
+  "settings": {
+    "db_connection_string": "mongodb://localhost:27017",
+    "auth_key": "test-key-123",
+    "alert_threshold": 5,
+    "time_window": 15,
+    "alert_severity": "High",
+    "alert_admins": ["DevOps-Lead"],
+    "monitored_events": ["failed_login", "unusual_pattern", "sql_injection_attempt"]
   }
 }'
 ```
