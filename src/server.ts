@@ -91,6 +91,14 @@ app.get("/integrationspec", (_req, res) => {
   res.json(integrationSpec);
 });
 
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Main webhook handler
 app.post("/webhook", async (req, res) => {
   try {

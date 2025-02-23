@@ -1,69 +1,47 @@
-import { jest } from "@jest/globals";
+import { beforeEach, beforeAll, afterAll } from "@jest/globals";
+import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
-import dotenv from "dotenv";
-import logger from "../../utils/logger";
+import app from "../../server";
 
 dotenv.config({ path: ".env.test" });
-process.env.NODE_ENV = "test"; // Ensure we're in test mode
 
-let mongod: MongoMemoryServer;
-
-// Extend timeout for all tests
-jest.setTimeout(30000);
+let mongo: MongoMemoryServer;
+let server: any;
 
 beforeAll(async () => {
   try {
-    // Create new instance of MongoMemoryServer
-    mongod = await MongoMemoryServer.create();
-    const uri = await mongod.getUri();
-
-    // Set the URI for tests
-    process.env.MONGODB_URI = uri;
-
-    // Connect to in-memory database
-    await mongoose.connect(uri);
-    logger.info("✅ Connected to test database");
-  } catch (error) {
-    logger.error("❌ Failed to connect to test database:", error);
-    throw error;
-  }
-});
-
-// Clear database between tests
-beforeEach(async () => {
-  try {
-    if (!mongoose.connection.db) {
-      throw new Error("Database connection not established");
+    process.env.NODE_ENV = "test";
+    mongo = await MongoMemoryServer.create();
+    const mongoUri = mongo.getUri();
+    await mongoose.connect(mongoUri);
+    if (mongoose.connection.db) {
+      await mongoose.connection.db
+        .collection("auth_events")
+        .createIndex({ userId: 1 });
     }
-
-    const collections = await mongoose.connection.db.collections();
-    await Promise.all(
-      collections.map((collection) => collection.deleteMany({}))
-    );
-    jest.clearAllMocks();
+    server = app.listen(0);
   } catch (error) {
-    logger.error("❌ Failed to clean test database:", error);
-    throw error;
+    console.error("Test setup failed:", error);
+    process.exit(1);
   }
 });
 
-// Cleanup after all tests
+beforeEach(async () => {
+  if (!mongoose.connection.db) return;
+  const collections = await mongoose.connection.db.collections();
+  await Promise.all(collections.map((collection) => collection.deleteMany({})));
+  jest.clearAllMocks();
+});
+
 afterAll(async () => {
-  try {
-    await mongoose.disconnect();
-    await mongod.stop();
-    logger.info("✅ Test database cleaned up");
-  } catch (error) {
-    logger.error("❌ Failed to cleanup test database:", error);
-    throw error;
+  if (server) await new Promise((resolve) => server.close(resolve));
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close();
+  }
+  if (mongo) {
+    await mongo.stop();
   }
 });
 
-// Helper to get test database
-export const getTestDb = () => {
-  if (!mongoose.connection || !mongoose.connection.db) {
-    throw new Error("Database not initialized");
-  }
-  return mongoose.connection.db;
-};
+export { server, app };

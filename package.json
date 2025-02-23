@@ -6,10 +6,10 @@
     "start": "ts-node src/index.ts",
     "dev": "nodemon src/index.ts",
     "build": "tsc",
-    "test": "jest --detectOpenHandles --forceExit --runInBand --verbose --testTimeout=60000",
     "lint": "eslint . --ext .ts",
-    "test:watch": "jest --watchAll --detectOpenHandles --runInBand --verbose --testTimeout=60000",
-    "test:coverage": "jest --coverage --detectOpenHandles --forceExit --runInBand --verbose --testTimeout=60000",
+    "test": "jest --detectOpenHandles --forceExit",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "verify": "ts-node src/scripts/verifySetup.ts",
     "check-db": "ts-node src/scripts/checkDb.ts",
     "test:real": "ts-node src/scripts/realWorldTest.ts"
