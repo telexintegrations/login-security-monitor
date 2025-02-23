@@ -80,9 +80,9 @@ app.set("trust proxy", 1);
 app.use(cors());
 app.use(express.json());
 
-// Skip rate limiting for test requests
+// Skip rate limiting for health checks and test requests
 app.use((req, res, next) => {
-  if (req.headers["x-test-auth"]) {
+  if (req.path === "/health" || req.headers["x-test-auth"]) {
     next();
   } else {
     limiter(req, res, next);
@@ -94,16 +94,17 @@ app.get("/", (_req, res) => {
   res.json({ status: "ok", message: "Auth Monitor Service" });
 });
 
-app.get("/integrationspec", (_req, res) => {
-  res.json(integrationSpec);
-});
-
+// Health check endpoint
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get("/integrationspec", (_req, res) => {
+  res.json(integrationSpec);
 });
 
 // Main webhook handler
